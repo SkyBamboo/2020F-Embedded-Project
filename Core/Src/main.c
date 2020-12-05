@@ -66,13 +66,23 @@ uint8_t my_re_buf1[2000];
 uint8_t my_re_buf2[2000];
 uint16_t pt_w1=1,pt_w2=0,pt_r1=1,pt_r2=0;
 
-char Test[]="AT\r\n";
-char JoinWifi[]="AT+CWJAP=\"Kotori\",\"372220529\"\r\n";
-char TestJoin[]="AT+CWJAP?\r\n";
-char SimpleConnect[]="AT+CIPMUX=0\r\n";
-char JoinServer[]="AT+CIPSTART=\"TCP\",\"172.20.10.7\",3456\r\n";
-char Mode[]="AT+CIPMODE=1\r\n";
-char ModeSend[]="AT+CIPSEND\r\n";
+char Reset[] = "AT+RST\r\n";
+char SetSingleConnect[] = "AT+CIPMUX=0\r\n";
+char SetMultiConnect[] = "AT+CIPMUX=1\r\n";
+char SendDataTCP[] = "AT+CIPSEND=0,25\r\n";
+char SendDataUDP[] = "AT+CIPSEND=25\r\n";
+// AP Mode
+char SetAPMode[] = "AT+CWMODE=2\r\n";
+char SetWiFiInfo[] = "AT+CWSAP=\"name\",\"password\",1,4\r\n";
+char SetServerIP[] = "AT+CIPAP=\"192.168.0.0\"\r\n";
+char StartServerAndSetPort = "AT+CIPSERVER=1,3456\r\n";
+// STA Mode
+char SetSTAMode[] = "AT+CWMODE=1\r\n";
+char ConnectToWiFi[] = "AT+CWJAP=\"name\",\"password\",1,4\r\n";
+char ConnectToServer[] = "AT+CIPSTART=\"TCP\",\"ip\",\"port\"\r\n";
+char SetSeriaNet[] = "AT+CIPMODE=1\r\n";
+char StartSerialNet[] = "AT+CIPSEND\r\n";
+
 /* USER CODE END 0 */
 
 /**
