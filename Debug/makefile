@@ -40,8 +40,8 @@ STM32_WiFi.bin \
 all: STM32_WiFi.elf secondary-outputs
 
 # Tool invocations
-STM32_WiFi.elf: $(OBJS) $(USER_OBJS) C:\Users\Smy\iCloudDrive\Desktop\junior_year\embedded_system\proj\code\STM32F103RCTX_FLASH.ld
-	arm-none-eabi-gcc -o "STM32_WiFi.elf" @"objects.list" $(USER_OBJS) $(LIBS) -mcpu=cortex-m3 -T"C:\Users\Smy\iCloudDrive\Desktop\junior_year\embedded_system\proj\code\STM32F103RCTX_FLASH.ld" --specs=nosys.specs -Wl,-Map="STM32_WiFi.map" -Wl,--gc-sections -static --specs=nano.specs -mfloat-abi=soft -mthumb -Wl,--start-group -lc -lm -Wl,--end-group
+STM32_WiFi.elf: $(OBJS) $(USER_OBJS) C:\Users\18038\Desktop\2020F-Embedded-Project\STM32F103RCTX_FLASH.ld
+	arm-none-eabi-gcc -o "STM32_WiFi.elf" @"objects.list" $(USER_OBJS) $(LIBS) -mcpu=cortex-m3 -T"C:\Users\18038\Desktop\2020F-Embedded-Project\STM32F103RCTX_FLASH.ld" --specs=nosys.specs -Wl,-Map="STM32_WiFi.map" -Wl,--gc-sections -static --specs=nano.specs -mfloat-abi=soft -mthumb -Wl,--start-group -lc -lm -Wl,--end-group
 	@echo 'Finished building target: $@'
 	@echo ' '
 
