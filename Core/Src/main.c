@@ -73,13 +73,14 @@ char SendDataTCP[] = "AT+CIPSEND=0,25\r\n";
 char SendDataUDP[] = "AT+CIPSEND=25\r\n";
 // AP Mode
 char SetAPMode[] = "AT+CWMODE=2\r\n";
-char SetWiFiInfo[] = "AT+CWSAP=\"name\",\"password\",1,4\r\n";
-char SetServerIP[] = "AT+CIPAP=\"192.168.0.0\"\r\n";
-char StartServerAndSetPort = "AT+CIPSERVER=1,3456\r\n";
+char SetWiFiInfo[] = "AT+CWSAP=\"STM32\",\"12345678\",1,4\r\n";
+char SetServerIP[] = "AT+CIPAP=\"192.168.0.123\"\r\n";
+char StartServerAndSetPort[] = "AT+CIPSERVER=1,4567\r\n";
 // STA Mode
 char SetSTAMode[] = "AT+CWMODE=1\r\n";
-char ConnectToWiFi[] = "AT+CWJAP=\"name\",\"password\",1,4\r\n";
-char ConnectToServer[] = "AT+CIPSTART=\"TCP\",\"ip\",\"port\"\r\n";
+char ConnectToWiFi[] = "AT+CWJAP=\"dingsenson\",\"hahahaha\",1,4\r\n";
+char ConnectToTCPServer[] = "AT+CIPSTART=\"TCP\",\"192.168.43.172\",\"3456\"\r\n";
+char ConnectToUDPServer[] = "AT+CIPSTART=\"UDP\",\"ip\",\"port\"\r\n";
 char SetSeriaNet[] = "AT+CIPMODE=1\r\n";
 char StartSerialNet[] = "AT+CIPSEND\r\n";
 
@@ -119,13 +120,13 @@ int main(void)
   /* USER CODE BEGIN 2 */
   HAL_TIM_Base_Start_IT(&htim3);
 
-	command(Test);
-	command(JoinWifi);
-	command(TestJoin);
-	command(SimpleConnect);
-	command(JoinServer);
-	command(Mode);
-	command(ModeSend);
+//	command(Test);
+//	command(JoinWifi);
+//	command(TestJoin);
+//	command(SimpleConnect);
+//	command(JoinServer);
+//	command(Mode);
+//	command(ModeSend);
   /* USER CODE END 2 */
 
   /* Infinite loop */
@@ -133,7 +134,6 @@ int main(void)
   while (1)
   {
     /* USER CODE END WHILE */
-
     /* USER CODE BEGIN 3 */
   }
   /* USER CODE END 3 */
@@ -299,12 +299,25 @@ static void MX_GPIO_Init(void)
   /* GPIO Ports Clock Enable */
   __HAL_RCC_GPIOD_CLK_ENABLE();
   __HAL_RCC_GPIOA_CLK_ENABLE();
+  __HAL_RCC_GPIOC_CLK_ENABLE();
 
   /*Configure GPIO pin Output Level */
   HAL_GPIO_WritePin(LED0_GPIO_Port, LED0_Pin, GPIO_PIN_RESET);
 
   /*Configure GPIO pin Output Level */
   HAL_GPIO_WritePin(LED1_GPIO_Port, LED1_Pin, GPIO_PIN_RESET);
+
+  /*Configure GPIO pin : KEY_WK_Pin */
+  GPIO_InitStruct.Pin = KEY_WK_Pin;
+  GPIO_InitStruct.Mode = GPIO_MODE_IT_RISING;
+  GPIO_InitStruct.Pull = GPIO_PULLDOWN;
+  HAL_GPIO_Init(KEY_WK_GPIO_Port, &GPIO_InitStruct);
+
+  /*Configure GPIO pin : KEY0_Pin */
+  GPIO_InitStruct.Pin = KEY0_Pin;
+  GPIO_InitStruct.Mode = GPIO_MODE_IT_RISING;
+  GPIO_InitStruct.Pull = GPIO_PULLUP;
+  HAL_GPIO_Init(KEY0_GPIO_Port, &GPIO_InitStruct);
 
   /*Configure GPIO pin : LED0_Pin */
   GPIO_InitStruct.Pin = LED0_Pin;
@@ -313,6 +326,12 @@ static void MX_GPIO_Init(void)
   GPIO_InitStruct.Speed = GPIO_SPEED_FREQ_LOW;
   HAL_GPIO_Init(LED0_GPIO_Port, &GPIO_InitStruct);
 
+  /*Configure GPIO pin : KEY1_Pin */
+  GPIO_InitStruct.Pin = KEY1_Pin;
+  GPIO_InitStruct.Mode = GPIO_MODE_IT_RISING;
+  GPIO_InitStruct.Pull = GPIO_PULLUP;
+  HAL_GPIO_Init(KEY1_GPIO_Port, &GPIO_InitStruct);
+
   /*Configure GPIO pin : LED1_Pin */
   GPIO_InitStruct.Pin = LED1_Pin;
   GPIO_InitStruct.Mode = GPIO_MODE_OUTPUT_PP;
@@ -320,21 +339,33 @@ static void MX_GPIO_Init(void)
   GPIO_InitStruct.Speed = GPIO_SPEED_FREQ_LOW;
   HAL_GPIO_Init(LED1_GPIO_Port, &GPIO_InitStruct);
 
+  /* EXTI interrupt init*/
+  HAL_NVIC_SetPriority(EXTI0_IRQn, 1, 0);
+  HAL_NVIC_EnableIRQ(EXTI0_IRQn);
+
+  HAL_NVIC_SetPriority(EXTI9_5_IRQn, 1, 1);
+  HAL_NVIC_EnableIRQ(EXTI9_5_IRQn);
+
+  HAL_NVIC_SetPriority(EXTI15_10_IRQn, 1, 2);
+  HAL_NVIC_EnableIRQ(EXTI15_10_IRQn);
+
 }
 
 /* USER CODE BEGIN 4 */
-void command(char f[])
+void SendCommand(char cmd[])
 {
-	HAL_UART_Transmit(&huart1,f,strlen(f),1000);
-	HAL_Delay(2000);
+	HAL_GPIO_TogglePin(LED0_GPIO_Port, LED0_Pin);
+	HAL_UART_Transmit(&huart2, (uint8_t*)cmd, strlen(cmd), HAL_MAX_DELAY);
+	//HAL_UART_Transmit(&huart1, (uint8_t*)cmd, strlen(cmd), HAL_MAX_DELAY);
+	HAL_GPIO_TogglePin(LED0_GPIO_Port, LED0_Pin);
+	HAL_Delay(1000);
 }
 
 void HAL_TIM_PeriodElapsedCallback(TIM_HandleTypeDef *htim)
 {
-
 	if(htim==&htim3)
 	{
-		HAL_GPIO_TogglePin(GPIOA,GPIO_PIN_5);
+		HAL_GPIO_TogglePin(LED1_GPIO_Port, LED1_Pin);
 		while(pt_r1<pt_w1 )
 		{
 			HAL_UART_Transmit(&huart2,&my_re_buf1[pt_r1++],1,1000);
@@ -342,7 +373,6 @@ void HAL_TIM_PeriodElapsedCallback(TIM_HandleTypeDef *htim)
 		if(pt_r1>=pt_w1)
 		{
 			pt_w1=pt_r1=0;
-
 		}
 		while(pt_r2<pt_w2 )
 		{
@@ -358,13 +388,60 @@ void HAL_TIM_PeriodElapsedCallback(TIM_HandleTypeDef *htim)
 
 void HAL_UART_RxCpltCallback(UART_HandleTypeDef *huart)
 {
-	if (huart == &huart1)
+	if(huart==&huart1)
 	{
 		HAL_UART_Receive_IT(&huart1,&my_re_buf1[++pt_w1],1);
 	}
-	if (huart == &huart2)
+
+	if(huart==&huart2)
 	{
+		//HAL_UART_Transmit(&huart1, "HUART2 Receive IT\r\n", , Timeout)
 		HAL_UART_Receive_IT(&huart2,&my_re_buf2[++pt_w2],1);
+	}
+}
+
+void HAL_GPIO_EXTI_Callback(uint16_t GPIO_Pin)
+{
+	HAL_Delay(100);
+	switch (GPIO_Pin) {
+	case KEY0_Pin:
+		if (HAL_GPIO_ReadPin(KEY0_GPIO_Port, KEY0_Pin) == GPIO_PIN_RESET) {
+			//HAL_GPIO_TogglePin(LED0_GPIO_Port, LED0_Pin);
+			HAL_Delay(100);
+			HAL_UART_Transmit(&huart1, "SetSTA\r\n", 8, HAL_MAX_DELAY);
+			SendCommand(SetSTAMode);
+			SendCommand(Reset);
+			SendCommand(ConnectToWiFi);
+			SendCommand(SetSingleConnect);
+			SendCommand(ConnectToTCPServer);
+			SendCommand(SetSeriaNet);
+			SendCommand(StartSerialNet);
+			HAL_UART_Transmit(&huart1, "Finish\r\n", 8, HAL_MAX_DELAY);
+		}
+		break;
+	case KEY1_Pin:
+		if (HAL_GPIO_ReadPin(KEY1_GPIO_Port, KEY1_Pin) == GPIO_PIN_RESET) {
+			HAL_Delay(100);
+			HAL_UART_Transmit(&huart1, "StopConnection\r\n", 16, HAL_MAX_DELAY);
+
+			HAL_UART_Transmit(&huart1, "Finish\r\n", 8, HAL_MAX_DELAY);
+		}
+		break;
+	case KEY_WK_Pin:
+		if (HAL_GPIO_ReadPin(KEY_WK_GPIO_Port, KEY_WK_Pin) == GPIO_PIN_SET) {
+			HAL_Delay(100);
+			HAL_UART_Transmit(&huart1, "SetAP\r\n", 7, HAL_MAX_DELAY);
+			SendCommand(SetAPMode);
+			SendCommand(Reset);
+		    SendCommand(SetWiFiInfo);
+			SendCommand(SetServerIP);
+			SendCommand(SetMultiConnect);
+			SendCommand(StartServerAndSetPort);
+			HAL_UART_Transmit(&huart1, "Finish\r\n", 8, HAL_MAX_DELAY);
+		}
+		break;
+	default:
+		break;
 	}
 }
 /* USER CODE END 4 */
