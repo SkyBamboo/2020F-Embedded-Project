@@ -70,6 +70,8 @@ uint16_t Front1=0, Front2=0;
 uint16_t LastEnd1=0, LastEnd2=0;
 uint16_t End1=0, End2=0;
 
+int isConnected = 0;
+
 char Reset[] = "AT+RST\r\n";
 char SetSingleConnect[] = "AT+CIPMUX=0\r\n";
 char SetMultiConnect[] = "AT+CIPMUX=1\r\n";
@@ -110,7 +112,6 @@ char data[] = "2222222333355565555612319";
 int main(void)
 {
   /* USER CODE BEGIN 1 */
-
   /* USER CODE END 1 */
 
   /* MCU Configuration--------------------------------------------------------*/
@@ -455,37 +456,40 @@ void HAL_TIM_PeriodElapsedCallback(TIM_HandleTypeDef *htim)
 {
 	if(htim == &htim3)
 	{
-
 		if (Front1 < End1-1 && End1!=1)
 		{
-			char SendDataCommand[16] = "AT+CIPSEND=0,5\r\n";
+			char SendDataCommand[] = "AT+CIPSEND=0,5\r\n";
 			sprintf(SendDataCommand, "AT+CIPSEND=0,%d\r\n", End1-1);
-//			//SendCommandNoClear(SendDataCommand, ResponseOK, DefaultTimeout);
-//			//HAL_UART_Transmit(&huart1, SendDataCommand, 16, HAL_MAX_DELAY);
-			HAL_UART_Transmit(&huart2, SendDataCommand, 16, HAL_MAX_DELAY);
-//			HAL_Delay(10);
+			//SendCommand(SendDataCommand, ResponseOK, DefaultTimeout);
+			HAL_UART_Transmit(&huart2, SendDataCommand, strlen(SendDataCommand), HAL_MAX_DELAY);
 		}
-
-		//HAL_UART_Transmit(&huart1, "hello\r\n", 7, 1000);
+		//char msg[2000];
 		while(Front1 < End1-1 && End1!=1)
 		{
+//			sprintf(msg[Front1], "%s", &RxBuffer1[Front1]);
+//			Front1++;
+//			sprintf(msg, "Front: %d, End: %d \r\n", Front1, End1);
+//			HAL_UART_Transmit(&huart1, msg, strlen(msg), HAL_MAX_DELAY);
 			HAL_UART_Transmit(&huart1, &RxBuffer1[Front1], 1, HAL_MAX_DELAY);
 			HAL_UART_Transmit(&huart2, &RxBuffer1[Front1++], 1, HAL_MAX_DELAY);
 		}
-		if(Front1 >= End1-1)
+		if(Front1 >= End1-1 && End1 != 1)
 		{
+
 			Front1 = 0;
 			End1 = 0;
+			(&huart1)->RxState = 32;
 			HAL_UART_Receive_IT(&huart1, &RxBuffer1[End1++], 1);
 		}
 		while(Front2 < End2-1 && End2!=1)
 		{
 			HAL_UART_Transmit(&huart1, &RxBuffer2[Front2++], 1, HAL_MAX_DELAY);
 		}
-		if(Front2 >= End2-1)
+		if(Front2 >= End2-1 && End2 != 1)
 		{
 			Front2 = 0;
 			End2 = 0;
+			//(&huart2)->RxState = 32;
 			HAL_UART_Receive_IT(&huart2, &RxBuffer2[End2++], 1);
 		}
 	}
@@ -553,6 +557,7 @@ void HAL_GPIO_EXTI_Callback(uint16_t GPIO_Pin)
 			SendCommand(SetMultiConnect, ResponseOK, DefaultTimeout);
 			SendCommand(StartServerAndSetPort, ResponseOK, DefaultTimeout);
 			SendCommand(CheckLocalIP, ResponseOK, DefaultTimeout);
+			isConnected = 1;
 			HAL_UART_Transmit(&huart1, "Finish\r\n", 8, HAL_MAX_DELAY);
 		}
 		break;
