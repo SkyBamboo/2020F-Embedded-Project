@@ -24,6 +24,7 @@
 /* Private includes ----------------------------------------------------------*/
 /* USER CODE BEGIN Includes */
 #include "lcd.h"
+#include "string.h"
 /* USER CODE END Includes */
 
 /* Private typedef -----------------------------------------------------------*/
@@ -90,6 +91,10 @@ char StartSerialNet[] = "AT+CIPSEND\r\n";
 char SetAPSTAMode[] = "AT+CWMODE=3\r\n";
 
 // Check List
+int DefaultTimeout = 200; // true timeout = default * 10
+char ResponseOK[] = "OK";
+char ResponseError[] = "ERROR";
+char ResponseReady[] = "ready";
 char CheckConnectionStatus[] = "AT+CIPSTATUS\r\n";
 char data[] = "2222222333355565555612319";
 
@@ -366,11 +371,58 @@ static void MX_GPIO_Init(void)
 }
 
 /* USER CODE BEGIN 4 */
-void SendCommand(char cmd[])
+int SendCommand(char cmd[], char expectReponse[], int time_out)
 {
+	char* indexOK = 0;
+	int findExpectResponse = 0;
 	HAL_GPIO_TogglePin(LED0_GPIO_Port, LED0_Pin);
 	HAL_UART_Transmit(&huart2, (uint8_t*)cmd, strlen(cmd), HAL_MAX_DELAY);
-	//HAL_UART_Transmit(&huart1, (uint8_t*)cmd, strlen(cmd), HAL_MAX_DELAY);
+	if (expectReponse && time_out)
+	{
+		while(--time_out)
+		{
+			HAL_Delay(10);
+			indexOK = strstr(RxBuffer2, expectReponse);
+			if (indexOK)
+			{
+				findExpectResponse = 1;
+				break;
+			}
+		}
+	}
+
+	// Output to huart
+	while(Front1 < End1)
+	{
+		HAL_UART_Transmit(&huart2, &RxBuffer1[Front1++], 1, 1000);
+	}
+	if(Front1 >= End1)
+	{
+		End1 = Front1 = 0;
+	}
+	while(Front2 < End2)
+	{
+		HAL_UART_Transmit(&huart1, &RxBuffer2[Front2++], 1, 1000);
+	}
+	if(Front2 >= End2)
+	{
+		End2 = Front2 = 0;
+	}
+
+	// Check response
+	if (findExpectResponse)
+	{
+		HAL_UART_Transmit(&huart1, "Success\r\n", 9, HAL_MAX_DELAY);
+
+	}
+	else if (time_out == 0)
+	{
+		HAL_UART_Transmit(&huart1, "Timeout\r\n", 9, HAL_MAX_DELAY);
+	}
+	else
+	{
+		HAL_UART_Transmit(&huart1, "Fail\r\n", 6, HAL_MAX_DELAY);
+	}
 	HAL_Delay(1000);
 	HAL_GPIO_TogglePin(LED0_GPIO_Port, LED0_Pin);
 }
@@ -384,24 +436,14 @@ void HAL_TIM_PeriodElapsedCallback(TIM_HandleTypeDef *htim)
 {
 	if(htim == &htim3)
 	{
-		HAL_GPIO_TogglePin(LED1_GPIO_Port, LED1_Pin);
-		while(Front1 < End1)
-		{
-			HAL_UART_Transmit(&huart2, &RxBuffer1[Front1++], 1, 1000);
-		}
-		if(Front1 >= End1)
-		{
-			End1 = Front1 = 0;
-		}
-		while(Front2 < End2)
-		{
-			HAL_UART_Transmit(&huart1, &RxBuffer2[Front2++], 1, 1000);
-		}
-		if(Front2 >= End2)
-		{
-			End2 = Front2 = 0;
-		}
+
 	}
+}
+
+void clearBuffer()
+{
+	End1 = Front1 = 0;
+	End2 = Front2 = 0;
 }
 
 void HAL_UART_RxCpltCallback(UART_HandleTypeDef *huart)
@@ -423,14 +465,17 @@ void HAL_GPIO_EXTI_Callback(uint16_t GPIO_Pin)
 	case KEY0_Pin:
 		if (HAL_GPIO_ReadPin(KEY0_GPIO_Port, KEY0_Pin) == GPIO_PIN_RESET) {
 			HAL_UART_Transmit(&huart1, "SetSTA\r\n", 8, HAL_MAX_DELAY);
-			SendCommand(SetSTAMode);
-			SendCommand(Reset);
-			SendCommand(ConnectToWiFi);
+			SendCommand(SetSTAMode, ResponseOK, DefaultTimeout);
+			SendCommand(Reset, ResponseOK, DefaultTimeout);
+			HAL_Delay(1000);
+			HAL_Delay(1000);
+			clearBuffer();
+			SendCommand(ConnectToWiFi, ResponseOK, DefaultTimeout);
 			//SendCommand(SetSingleConnect);
-			SendCommand(ConnectToTCPServer);
-			SendCommand(SetSeriaNet);
-			SendCommand(StartSerialNet);
-			SendCommand(CheckIP);
+			SendCommand(ConnectToTCPServer, ResponseOK, DefaultTimeout);
+			SendCommand(SetSeriaNet, ResponseOK, DefaultTimeout);
+			SendCommand(StartSerialNet, ResponseOK, DefaultTimeout);
+			// SendCommand(CheckIP);
 			HAL_UART_Transmit(&huart1, "Finish\r\n", 8, HAL_MAX_DELAY);
 		}
 		break;
@@ -438,18 +483,21 @@ void HAL_GPIO_EXTI_Callback(uint16_t GPIO_Pin)
 		if (HAL_GPIO_ReadPin(KEY1_GPIO_Port, KEY1_Pin) == GPIO_PIN_RESET) {
 			//SendCommand(SendDataTCP);
 			//SendCommand(data);
-			SendCommand(CheckConnectionStatus);
+			// SendCommand(CheckConnectionStatus);
 		}
 		break;
 	case KEY_WK_Pin:
 		if (HAL_GPIO_ReadPin(KEY_WK_GPIO_Port, KEY_WK_Pin) == GPIO_PIN_SET) {
 			HAL_UART_Transmit(&huart1, "SetAP\r\n", 7, HAL_MAX_DELAY);
-			SendCommand(SetAPMode);
-			SendCommand(Reset);
-		    SendCommand(SetWiFiInfo);
-			SendCommand(SetServerIP);
-			SendCommand(SetMultiConnect);
-			SendCommand(StartServerAndSetPort);
+			SendCommand(SetAPMode, ResponseOK, DefaultTimeout);
+			SendCommand(Reset, ResponseOK, DefaultTimeout);
+			HAL_Delay(1000);
+			HAL_Delay(1000);
+			clearBuffer();
+		    SendCommand(SetWiFiInfo, ResponseOK, DefaultTimeout);
+			SendCommand(SetServerIP, ResponseOK, DefaultTimeout);
+			SendCommand(SetMultiConnect, ResponseOK, DefaultTimeout);
+			SendCommand(StartServerAndSetPort, ResponseOK, DefaultTimeout);
 			HAL_UART_Transmit(&huart1, "Finish\r\n", 8, HAL_MAX_DELAY);
 		}
 		break;
