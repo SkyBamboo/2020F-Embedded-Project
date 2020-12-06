@@ -456,36 +456,39 @@ void HAL_TIM_PeriodElapsedCallback(TIM_HandleTypeDef *htim)
 {
 	if(htim == &htim3)
 	{
-		if (Front1 < End1-1 && End1!=1)
-		{
-			char SendDataCommand[] = "AT+CIPSEND=0,5\r\n";
-			sprintf(SendDataCommand, "AT+CIPSEND=0,%d\r\n", End1-1);
-			//SendCommand(SendDataCommand, ResponseOK, DefaultTimeout);
-			HAL_UART_Transmit(&huart2, SendDataCommand, strlen(SendDataCommand), HAL_MAX_DELAY);
-		}
-		//char msg[2000];
+//		if (Front1 < End1-1 && End1!=1)
+//		{
+//			char SendDataCommand[] = "AT+CIPSEND=0,5\r\n";
+//			sprintf(SendDataCommand, "AT+CIPSEND=0,%d\r\n", End1-1);
+//			//SendCommand(SendDataCommand, ResponseOK, DefaultTimeout);
+//			HAL_UART_Transmit(&huart2, SendDataCommand, strlen(SendDataCommand), HAL_MAX_DELAY);
+//		}
+//		//char msg[2000];
 		while(Front1 < End1-1 && End1!=1)
 		{
-//			sprintf(msg[Front1], "%s", &RxBuffer1[Front1]);
-//			Front1++;
-//			sprintf(msg, "Front: %d, End: %d \r\n", Front1, End1);
-//			HAL_UART_Transmit(&huart1, msg, strlen(msg), HAL_MAX_DELAY);
-			HAL_UART_Transmit(&huart1, &RxBuffer1[Front1], 1, HAL_MAX_DELAY);
-			HAL_UART_Transmit(&huart2, &RxBuffer1[Front1++], 1, HAL_MAX_DELAY);
+			HAL_UART_Transmit(&huart1, &RxBuffer1[Front1++], 1, HAL_MAX_DELAY);
+			//HAL_UART_Transmit(&huart2, &RxBuffer1[Front1++], 1, HAL_MAX_DELAY);
 		}
-		if(Front1 >= End1-1 && End1 != 1)
-		{
 
+		if(Front1 >= End1 - 1 && End1!=1)
+		{
+			char msg[200];
+			for(int i=0;i<Front1;i++){
+				msg[i] = RxBuffer1[i];
+			}
+			msg[Front1] = '\r';
+			msg[Front1+1] = '\n';
+			HAL_UART_Transmit(&huart2,&msg,Front1+2,HAL_MAX_DELAY);
 			Front1 = 0;
 			End1 = 0;
 			(&huart1)->RxState = 32;
 			HAL_UART_Receive_IT(&huart1, &RxBuffer1[End1++], 1);
 		}
-		while(Front2 < End2-1 && End2!=1)
+		while(Front2 < End2 - 1 && End2!=1)
 		{
 			HAL_UART_Transmit(&huart1, &RxBuffer2[Front2++], 1, HAL_MAX_DELAY);
 		}
-		if(Front2 >= End2-1 && End2 != 1)
+		if(Front2 >= End2 - 1 && End2 != 1)
 		{
 			Front2 = 0;
 			End2 = 0;
