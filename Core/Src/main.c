@@ -137,8 +137,8 @@ int main(void)
   /* USER CODE BEGIN 2 */
   HAL_TIM_Base_Start_IT(&htim3);
   LCD_Init();
-  HAL_UART_Receive_IT(&huart1, &RxBuffer1, 1);
-  HAL_UART_Receive_IT(&huart2, &RxBuffer2, 1);
+  HAL_UART_Receive_IT(&huart1, &RxBuffer1[End1++], 1);
+  HAL_UART_Receive_IT(&huart2, &RxBuffer2[End2++], 1);
   /* USER CODE END 2 */
 
   /* Infinite loop */
@@ -456,53 +456,60 @@ void HAL_TIM_PeriodElapsedCallback(TIM_HandleTypeDef *htim)
 	if(htim == &htim3)
 	{
 
-		if (Front1 < End1)
+		if (Front1 < End1-1 && End1!=1)
 		{
 			char SendDataCommand[16] = "AT+CIPSEND=0,5\r\n";
-			//sprintf(SendDataCommand, "AT+CIPSEND=0,%d\r\n", End1);
-			//SendCommandNoClear(SendDataCommand, ResponseOK, DefaultTimeout);
-			//HAL_UART_Transmit(&huart1, SendDataCommand, 16, HAL_MAX_DELAY);
+			sprintf(SendDataCommand, "AT+CIPSEND=0,%d\r\n", End1-1);
+//			//SendCommandNoClear(SendDataCommand, ResponseOK, DefaultTimeout);
+//			//HAL_UART_Transmit(&huart1, SendDataCommand, 16, HAL_MAX_DELAY);
 			HAL_UART_Transmit(&huart2, SendDataCommand, 16, HAL_MAX_DELAY);
-			//HAL_Delay(1000);
+//			HAL_Delay(10);
 		}
 
-		while(Front1 < End1)
+		//HAL_UART_Transmit(&huart1, "hello\r\n", 7, 1000);
+		while(Front1 < End1-1 && End1!=1)
 		{
-			//HAL_UART_Transmit(&huart1, &RxBuffer1[Front1], 1, 1000);
-			HAL_UART_Transmit(&huart2, &RxBuffer1[Front1++], 1, 1000);
+			HAL_UART_Transmit(&huart1, &RxBuffer1[Front1], 1, HAL_MAX_DELAY);
+			HAL_UART_Transmit(&huart2, &RxBuffer1[Front1++], 1, HAL_MAX_DELAY);
 		}
-		if(Front1 >= End1)
+		if(Front1 >= End1-1)
 		{
-			End1 = Front1 = 0;
+			Front1 = 0;
+			End1 = 0;
+			HAL_UART_Receive_IT(&huart1, &RxBuffer1[End1++], 1);
 		}
-		while(Front2 < End2)
+		while(Front2 < End2-1 && End2!=1)
 		{
-			HAL_UART_Transmit(&huart1, &RxBuffer2[Front2++], 1, 1000);
+			HAL_UART_Transmit(&huart1, &RxBuffer2[Front2++], 1, HAL_MAX_DELAY);
 		}
-		if(Front2 >= End2)
+		if(Front2 >= End2-1)
 		{
-			End2 = Front2 = 0;
+			Front2 = 0;
+			End2 = 0;
+			HAL_UART_Receive_IT(&huart2, &RxBuffer2[End2++], 1);
 		}
 	}
 }
 
 void clearBuffer()
 {
-	End1 = 0;
-	Front1 = 0;
-	End2 = 0;
-	Front2 = 0;
+//	Front1 = -1;
+//	End1 = 0;
+//	Front2 = -1;
+//	End2 = 0;
+//	HAL_UART_Receive_IT(&huart1, &RxBuffer1[End1++], 1);
+//	HAL_UART_Receive_IT(&huart2, &RxBuffer2[End2++], 1);
 }
 
 void HAL_UART_RxCpltCallback(UART_HandleTypeDef *huart)
 {
 	if (huart == &huart1)
 	{
-		HAL_UART_Receive_IT(&huart1, &RxBuffer1[++End1], 1);
+		HAL_UART_Receive_IT(&huart1, &RxBuffer1[End1++], 1);
 	}
 	if (huart == &huart2)
 	{
-		HAL_UART_Receive_IT(&huart2, &RxBuffer2[++End2], 1);
+		HAL_UART_Receive_IT(&huart2, &RxBuffer2[End2++], 1);
 	}
 }
 
@@ -538,8 +545,8 @@ void HAL_GPIO_EXTI_Callback(uint16_t GPIO_Pin)
 			HAL_UART_Transmit(&huart1, "SetAP\r\n", 7, HAL_MAX_DELAY);
 			SendCommand(SetAPMode, ResponseOK, DefaultTimeout);
 			SendCommand(Reset, ResponseOK, DefaultTimeout);
-			HAL_Delay(1000);
-			HAL_Delay(1000);
+			//HAL_Delay(1000);
+			//HAL_Delay(1000);
 			//clearBuffer();
 		    SendCommand(SetWiFiInfo, ResponseOK, DefaultTimeout);
 			SendCommand(SetServerIP, ResponseOK, DefaultTimeout);
