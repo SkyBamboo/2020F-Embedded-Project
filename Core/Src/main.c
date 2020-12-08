@@ -336,16 +336,16 @@ static void MX_GPIO_Init(void)
   /*Configure GPIO pin Output Level */
   HAL_GPIO_WritePin(LED1_GPIO_Port, LED1_Pin, GPIO_PIN_RESET);
 
-  /*Configure GPIO pins : KEY_WK_Pin KEY1_Pin */
-  GPIO_InitStruct.Pin = KEY_WK_Pin|KEY1_Pin;
+  /*Configure GPIO pin : KEY_WK_Pin */
+  GPIO_InitStruct.Pin = KEY_WK_Pin;
   GPIO_InitStruct.Mode = GPIO_MODE_IT_RISING;
   GPIO_InitStruct.Pull = GPIO_PULLDOWN;
-  HAL_GPIO_Init(GPIOA, &GPIO_InitStruct);
+  HAL_GPIO_Init(KEY_WK_GPIO_Port, &GPIO_InitStruct);
 
   /*Configure GPIO pin : KEY0_Pin */
   GPIO_InitStruct.Pin = KEY0_Pin;
   GPIO_InitStruct.Mode = GPIO_MODE_IT_RISING;
-  GPIO_InitStruct.Pull = GPIO_PULLDOWN;
+  GPIO_InitStruct.Pull = GPIO_PULLUP;
   HAL_GPIO_Init(KEY0_GPIO_Port, &GPIO_InitStruct);
 
   /*Configure GPIO pin : LED0_Pin */
@@ -354,6 +354,12 @@ static void MX_GPIO_Init(void)
   GPIO_InitStruct.Pull = GPIO_NOPULL;
   GPIO_InitStruct.Speed = GPIO_SPEED_FREQ_LOW;
   HAL_GPIO_Init(LED0_GPIO_Port, &GPIO_InitStruct);
+
+  /*Configure GPIO pin : KEY1_Pin */
+  GPIO_InitStruct.Pin = KEY1_Pin;
+  GPIO_InitStruct.Mode = GPIO_MODE_IT_RISING;
+  GPIO_InitStruct.Pull = GPIO_PULLUP;
+  HAL_GPIO_Init(KEY1_GPIO_Port, &GPIO_InitStruct);
 
   /*Configure GPIO pin : LED1_Pin */
   GPIO_InitStruct.Pin = LED1_Pin;
@@ -376,43 +382,6 @@ static void MX_GPIO_Init(void)
 
 /* USER CODE BEGIN 4 */
 int SendCommand(char cmd[], char expectReponse[], int time_out)
-{
-	char* indexOK = 0;
-	int findExpectResponse = 0;
-	HAL_GPIO_TogglePin(LED0_GPIO_Port, LED0_Pin);
-	HAL_UART_Transmit(&huart2, (uint8_t*)cmd, strlen(cmd), HAL_MAX_DELAY);
-	if (expectReponse && time_out)
-	{
-		while(--time_out)
-		{
-			HAL_Delay(10);
-			indexOK = strstr(RxBuffer2, expectReponse);
-			if (indexOK)
-			{
-				findExpectResponse = 1;
-				break;
-			}
-		}
-	}
-
-	// Check response
-	if (findExpectResponse)
-	{
-		HAL_UART_Transmit(&huart1, "Success\r\n", 9, HAL_MAX_DELAY);
-
-	}
-	else if (time_out == 0)
-	{
-		HAL_UART_Transmit(&huart1, "Timeout\r\n", 9, HAL_MAX_DELAY);
-	}
-	else
-	{
-		HAL_UART_Transmit(&huart1, "Fail\r\n", 6, HAL_MAX_DELAY);
-	}
-	HAL_Delay(1000);
-}
-
-void SendCommandNoClear(char cmd[], char expectReponse[], int time_out)
 {
 	char* indexOK = 0;
 	int findExpectResponse = 0;
@@ -511,7 +480,7 @@ void HAL_GPIO_EXTI_Callback(uint16_t GPIO_Pin)
 {
 	switch (GPIO_Pin) {
 	case KEY0_Pin:
-		if (HAL_GPIO_ReadPin(KEY0_GPIO_Port, KEY0_Pin) == GPIO_PIN_SET) {
+		if (HAL_GPIO_ReadPin(KEY0_GPIO_Port, KEY0_Pin) == GPIO_PIN_RESET) {
 			HAL_UART_Transmit(&huart1, "SetSTA\r\n", 8, HAL_MAX_DELAY);
 
 			SendCommand(SetSTAMode, ResponseOK, DefaultTimeout);
@@ -528,7 +497,7 @@ void HAL_GPIO_EXTI_Callback(uint16_t GPIO_Pin)
 		}
 		break;
 	case KEY1_Pin:
-		if (HAL_GPIO_ReadPin(KEY1_GPIO_Port, KEY1_Pin) == GPIO_PIN_SET) {
+		if (HAL_GPIO_ReadPin(KEY1_GPIO_Port, KEY1_Pin) == GPIO_PIN_RESET) {
 			HAL_UART_Transmit(&huart1, "SetAP\r\n", 7, HAL_MAX_DELAY);
 
 			SendCommand(SetAPMode, ResponseOK, DefaultTimeout);
