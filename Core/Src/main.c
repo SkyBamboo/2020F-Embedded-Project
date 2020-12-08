@@ -71,6 +71,7 @@ uint16_t LastEnd1=0, LastEnd2=0;
 uint16_t End1=0, End2=0;
 
 int isConnected = 0;
+int Mode = 0; // AP Server = 1; AP Client = 2; STA Server = 3; STA Client = 4
 
 char Reset[] = "AT+RST\r\n";
 char SetSingleConnect[] = "AT+CIPMUX=0\r\n";
@@ -451,8 +452,6 @@ void SendCommandNoClear(char cmd[], char expectReponse[], int time_out)
 
 void HAL_TIM_PeriodElapsedCallback(TIM_HandleTypeDef *htim)
 {
-	if(htim == &htim3)
-	{
 //		if (Front1 < End1-1 && End1!=1)
 //		{
 //			char SendDataCommand[] = "AT+CIPSEND=0,5\r\n";
@@ -461,37 +460,55 @@ void HAL_TIM_PeriodElapsedCallback(TIM_HandleTypeDef *htim)
 //			HAL_UART_Transmit(&huart2, SendDataCommand, strlen(SendDataCommand), HAL_MAX_DELAY);
 //		}
 //		//char msg[2000];
-		while(Front1 < End1-1 && End1!=1)
-		{
-			HAL_UART_Transmit(&huart1, &RxBuffer1[Front1++], 1, HAL_MAX_DELAY);
-			//HAL_UART_Transmit(&huart2, &RxBuffer1[Front1++], 1, HAL_MAX_DELAY);
-		}
 
-		if(Front1 >= End1 - 1 && End1!=1)
-		{
-			char msg[200];
-			for(int i=0;i<Front1;i++){
-				msg[i] = RxBuffer1[i];
-			}
-			msg[Front1] = '\r';
-			msg[Front1+1] = '\n';
-			HAL_UART_Transmit(&huart2,&msg,Front1+2,HAL_MAX_DELAY);
-			Front1 = 0;
-			End1 = 0;
-			(&huart1)->RxState = 32;
-			HAL_UART_Receive_IT(&huart1, &RxBuffer1[End1++], 1);
+	if(Front1 < End1 - 1 && End1!=1)
+	{
+
+//		while(Front1 < End1-1 && End1!=1)
+//		{
+//			HAL_UART_Transmit(&huart1, &RxBuffer1[Front1++], 1, HAL_MAX_DELAY);
+//		}
+		char msg[200];
+		for(int i=0;i<End1-1;i++){
+			msg[i] = RxBuffer1[i];
 		}
-		while(Front2 < End2 - 1 && End2!=1)
-		{
-			HAL_UART_Transmit(&huart1, &RxBuffer2[Front2++], 1, HAL_MAX_DELAY);
+		int IsSending = 0;
+		if(End1 - 1>=5 &&msg[0] == 's' && msg[1] == 'e' && msg[2] == 'n' && msg[3] == 'd' && msg[4] ==':')
+			IsSending = 1;
+		if(IsSending){
+			char SendDataCommand[22];
+			if(Mode == 1)
+				sprintf(SendDataCommand, "AT+CIPSEND=0,%d\r\n", End1-1-5);
+			else if(Mode == 4)
+				sprintf(SendDataCommand, "AT+CIPSEND=%d\r\n", End1-1-5);
+			HAL_UART_Transmit(&huart2, SendDataCommand, 22, HAL_MAX_DELAY); //send command to wifi
+
+
+			HAL_UART_Transmit(&huart1, &msg[5], End1-1-5, HAL_MAX_DELAY);	//message echo
+			HAL_UART_Transmit(&huart2, &msg[5], End1-1-5, HAL_MAX_DELAY);	//send message to wifi
+		}else{
+			msg[End1-1] = '\r';
+			msg[End1] = '\n';
+			HAL_UART_Transmit(&huart1,&msg,End1+1,HAL_MAX_DELAY);
+			HAL_UART_Transmit(&huart2,&msg,End1+1,HAL_MAX_DELAY);
 		}
-		if(Front2 >= End2 - 1 && End2 != 1)
-		{
-			Front2 = 0;
-			End2 = 0;
-			(&huart2)->RxState = 32;
-			HAL_UART_Receive_IT(&huart2, &RxBuffer2[End2++], 1);
-		}
+		//reset USART1
+		Front1 = 0;
+		End1 = 0;
+		(&huart1)->RxState = 32;
+		HAL_UART_Receive_IT(&huart1, &RxBuffer1[End1++], 1);
+	}
+
+	while(Front2 < End2 - 1 && End2!=1)
+	{
+		HAL_UART_Transmit(&huart1, &RxBuffer2[Front2++], 1, HAL_MAX_DELAY);
+	}
+	if(Front2 >= End2 - 1 && End2 != 1)
+	{
+		Front2 = 0;
+		End2 = 0;
+		(&huart2)->RxState = 32;
+		HAL_UART_Receive_IT(&huart2, &RxBuffer2[End2++], 1);
 	}
 }
 
@@ -521,9 +538,9 @@ void HAL_GPIO_EXTI_Callback(uint16_t GPIO_Pin)
 			SendCommand(Default_ConnectToWiFi, ResponseOK, DefaultTimeout);
 			SendCommand(SetSingleConnect, ResponseOK, DefaultTimeout);
 			SendCommand(Default_ConnectToTCPServer, ResponseOK, DefaultTimeout);
-			SendCommand(SetSeriaNet, ResponseOK, DefaultTimeout);
-			SendCommand(StartSerialNet, ResponseOK, DefaultTimeout);
-
+			//SendCommand(SetSeriaNet, ResponseOK, DefaultTimeout);
+			//SendCommand(StartSerialNet, ResponseOK, DefaultTimeout);
+			Mode = 4;
 			HAL_UART_Transmit(&huart1, "Finish\r\n", 8, HAL_MAX_DELAY);
 		}
 		break;
@@ -539,13 +556,13 @@ void HAL_GPIO_EXTI_Callback(uint16_t GPIO_Pin)
 			SendCommand(Default_SetServerIP, ResponseOK, DefaultTimeout);
 			SendCommand(SetMultiConnect, ResponseOK, DefaultTimeout);
 			SendCommand(Default_StartServerAndSetPort, ResponseOK, DefaultTimeout);
-
+			Mode = 1;
 			HAL_UART_Transmit(&huart1, "Finish\r\n", 8, HAL_MAX_DELAY);
 		}
 		break;
 	case KEY_WK_Pin:
 		if (HAL_GPIO_ReadPin(KEY_WK_GPIO_Port, KEY_WK_Pin) == GPIO_PIN_SET) {
-			SendCommand(CloseSerialNet, ResponseOK, DefaultTimeout);
+			//SendCommand(CloseSerialNet, ResponseOK, DefaultTimeout);
 			SendCommand(CloseConnection, ResponseOK, DefaultTimeout);
 		}
 		break;
