@@ -553,7 +553,8 @@ void HAL_TIM_PeriodElapsedCallback(TIM_HandleTypeDef *htim)
 
 	if(Front2 < End2 - 1 && End2!=1)
 	{
-		if(RxBuffer[0] == '+' && RxBuffer[1] == 'I' && RxBuffer[2] == 'P'){
+		if(RxBuffer2[0] == '+' && RxBuffer2[1] == 'I' && RxBuffer2[2] == 'P')
+		{
 			IsSendingMessage2 = 1;
 			for (int i=0; i<End2-1;i++){
 				message2[i] = RxBuffer2[i];
