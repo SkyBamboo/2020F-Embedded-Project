@@ -25,6 +25,12 @@
 /* USER CODE BEGIN Includes */
 #include "lcd.h"
 #include "string.h"
+
+//start
+#include <stdio.h>
+#include <string.h>
+#include <stdint.h>
+//end
 /* USER CODE END Includes */
 
 /* Private typedef -----------------------------------------------------------*/
@@ -65,7 +71,10 @@ static void MX_USART1_UART_Init(void);
 /* USER CODE BEGIN 0 */
 uint8_t RxBuffer1[5000];
 uint8_t RxBuffer2[5000];
-uint8_t message[2000];
+uint8_t message1[2000]; //message displayed in LCD
+int IsSendingMessage1 = 0;
+uint8_t message2[2000]; //message displayed in LCD
+int IsSendingMessage2 = 0;
 uint16_t Front1=0, Front2=0;
 uint16_t LastEnd1=0, LastEnd2=0;
 uint16_t End1=0, End2=0;
@@ -107,6 +116,14 @@ char ResponseReady[] = "ready";
 char CheckConnectionStatus[] = "AT+CIPSTATUS\r\n";
 char CheckLocalIP[] = "AT+CIFSR\r\n";
 
+int IsSetUp = 0;
+int msgY = 30;
+int spacing = 10;
+int rowHeight = 15;
+int msgX = 25;
+int rowWidth = 190;
+int oneRow = 31;
+int size =12;
 /* USER CODE END 0 */
 
 /**
@@ -150,21 +167,59 @@ int main(void)
   /* USER CODE BEGIN WHILE */
   while (1)
   {
+	  if(IsSendingMessage2){
+		  POINT_COLOR = BLUE;
+		  NotationMsg2();
+		  //LCD_ShowString(msg1X, msgY, msgL, 15, 12, (uint8_t*)msg1);
+		  DisplayString(message2,0);
+		  IsSendingMessage2 = 0;
+		  memset(message2, 0, sizeof message2);
+	  }
+	  if(IsSendingMessage1){
+		  POINT_COLOR = BLACK;
+		  NotationMsg1();
+		  //LCD_ShowString(msg2X, msgY, msgL, 15, 12, (uint8_t*)msg2);
+		  DisplayString(message1,1);
+		  IsSendingMessage1 = 0;
+		  memset(message1, 0, sizeof message1);
+	  }
     /* USER CODE END WHILE */
 
     /* USER CODE BEGIN 3 */
+	  POINT_COLOR = BLACK;
+	  LCD_DrawRectangle(0, 0, 240, 20);
+	  LCD_DrawRectangle(0, 20, 20, 320);
+	  LCD_DrawRectangle(220, 20, 240, 320);
+	  //MATE'S MESSAGE
+	  POINT_COLOR = BLUE;
+	  LCD_ShowString(10, 5, 90, 10, 12, (uint8_t*)"192.168.0.123");
+	  //MY MESSAGE
+	  POINT_COLOR = BLACK;
+	  LCD_ShowString(145, 5, 90, 10, 12, (uint8_t*)"Team MacroHard");
 
-//	  LCD_Clear(WHITE);
-//	  BACK_COLOR = WHITE;
-//	  POINT_COLOR = BLACK;
-//	  LCD_ShowString(10, 10, 100, 10, 24, (uint8_t *)"huart1: ");
-//	  LCD_ShowString(10, 30, 100, 10, 24, (uint8_t *)RxBuffer1);
-//	  LCD_ShowString(10, 50, 100, 10, 24, (uint8_t *)"huart2: ");
-//	  LCD_ShowString(10, 70, 100, 10, 24, (uint8_t *)RxBuffer2);
-//	  HAL_Delay(2000);
-
-
-
+		//Check Connection Status
+	  if(IsSetUp){
+		if(ConnectionFail(CheckConnectionStatus, "4", "5", DefaultTimeout)){
+			POINT_COLOR = RED;
+			LCD_Draw_Circle(120, 10, 6);
+			LCD_Draw_Circle(120, 10, 5);
+			LCD_Draw_Circle(120, 10, 4);
+			LCD_Draw_Circle(120, 10, 3);
+			LCD_Draw_Circle(120, 10, 2);
+			LCD_Draw_Circle(120, 10, 1);
+			//DrawCircle(120, 10, 5);
+		}else{
+			POINT_COLOR = GREEN;
+			LCD_Draw_Circle(120, 10, 6);
+			POINT_COLOR = WHITE;
+			LCD_Draw_Circle(120, 10, 5);
+			LCD_Draw_Circle(120, 10, 4);
+			LCD_Draw_Circle(120, 10, 3);
+			LCD_Draw_Circle(120, 10, 2);
+			LCD_Draw_Circle(120, 10, 1);
+			//DrawCircle(120, 10, 6);
+		}
+	  }
   }
   /* USER CODE END 3 */
 }
@@ -382,6 +437,43 @@ static void MX_GPIO_Init(void)
 }
 
 /* USER CODE BEGIN 4 */
+int GetMsgLength(char msg[200]) {
+	int count = 0;
+	for(int i=0; i<100 ;i++){
+		if(msg[i] == msg[200]){
+			break;
+		}
+		count++;
+	}
+	return count;
+}
+
+void DisplayString(char msg[200],int ismsg1){
+	int length = GetMsgLength(msg);
+	int rows = 0;
+	char temp[oneRow];
+	rows = length / oneRow+1;
+	for(int i=0;i<rows;i++){
+		if(i == rows-1){
+			int rest  = length - i*oneRow;
+			int blank = oneRow - rest+1;
+			for (int j=0;j<oneRow;j++){
+				temp[j]=' ';
+			}
+			for (int j=0;j<rest;j++){
+				temp[j+blank] = msg[i*oneRow+j];
+			}
+		}else{
+			for (int j=0;j<oneRow;j++){
+				temp[j] = msg[i*oneRow+j];
+			}
+		}
+		LCD_ShowString(msgX, msgY, rowWidth, rowHeight, size, temp);
+		msgY = msgY + rowHeight;
+	}
+	//LCD_ShowString(msgX, msgY, rowWidth, rowHeight, size, msg);
+}
+
 int SendCommand(char cmd[], char expectReponse[], int time_out)
 {
 	char* indexOK = 0;
@@ -419,32 +511,40 @@ int SendCommand(char cmd[], char expectReponse[], int time_out)
 	HAL_Delay(1000);
 }
 
+int ConnectionFail(char cmd[], char expectResponse1[], char expectResponse2[], int time_out){
+	char* indexOK1 = 0;
+	char* indexOK2 = 0;
+	int findExpectResponse = 0;
+	//HAL_UART_Transmit(&huart2, (uint8_t*)cmd, strlen(cmd), HAL_MAX_DELAY);
+	if (expectResponse1 && expectResponse2 && time_out)
+	{
+		while(--time_out)
+		{
+			HAL_Delay(10);
+			indexOK1 = strstr(RxBuffer2, expectResponse1);
+			indexOK2 = strstr(RxBuffer2, expectResponse2);
+			if (indexOK1||indexOK2)
+			{
+				findExpectResponse = 1;
+				return 1;
+				break;
+			}
+		}
+	}
+}
+
 void HAL_TIM_PeriodElapsedCallback(TIM_HandleTypeDef *htim)
 {
-//		if (Front1 < End1-1 && End1!=1)
-//		{
-//			char SendDataCommand[] = "AT+CIPSEND=0,5\r\n";
-//			sprintf(SendDataCommand, "AT+CIPSEND=0,%d\r\n", End1-1);
-//			//SendCommand(SendDataCommand, ResponseOK, DefaultTimeout);
-//			HAL_UART_Transmit(&huart2, SendDataCommand, strlen(SendDataCommand), HAL_MAX_DELAY);
-//		}
-//		//char msg[2000];
-
+	HAL_GPIO_TogglePin(LED0_GPIO_Port, LED0_Pin);
+	HAL_GPIO_TogglePin(LED1_GPIO_Port, LED1_Pin);
 	if(Front1 < End1 - 1 && End1!=1)
 	{
-
-//		while(Front1 < End1-1 && End1!=1)
-//		{
-//			HAL_UART_Transmit(&huart1, &RxBuffer1[Front1++], 1, HAL_MAX_DELAY);
-//		}
 		char msg[200];
 		for(int i=0;i<End1-1;i++){
 			msg[i] = RxBuffer1[i];
 		}
-		int IsSending = 0;
-		if(End1 - 1>=5 &&msg[0] == 's' && msg[1] == 'e' && msg[2] == 'n' && msg[3] == 'd' && msg[4] ==':')
-			IsSending = 1;
-		if(IsSending){
+		if(End1 - 1>=5 &&msg[0] == 's' && msg[1] == 'e' && msg[2] == 'n' && msg[3] == 'd' && msg[4] ==':'){
+			IsSendingMessage1 = 1;
 			char SendDataCommand[22];
 			if(Mode == 1)
 				sprintf(SendDataCommand, "AT+CIPSEND=0,%d\r\n", End1-1-5);
@@ -454,7 +554,12 @@ void HAL_TIM_PeriodElapsedCallback(TIM_HandleTypeDef *htim)
 
 
 			HAL_UART_Transmit(&huart1, &msg[5], End1-1-5, HAL_MAX_DELAY);	//message echo
-			HAL_UART_Transmit(&huart2, &msg[5], End1-1-5, HAL_MAX_DELAY);	//send message to wifi
+			HAL_UART_Transmit(&huart2, &msg[4], End1-1-4, HAL_MAX_DELAY);	//send message to wifi
+
+			//Send the message to LCD Buffer
+			for (int i=0; i<End1-6;i++){
+				message1[i] = msg[i+5];
+			}
 		}else{
 			msg[End1-1] = '\r';
 			msg[End1] = '\n';
@@ -468,12 +573,15 @@ void HAL_TIM_PeriodElapsedCallback(TIM_HandleTypeDef *htim)
 		HAL_UART_Receive_IT(&huart1, &RxBuffer1[End1++], 1);
 	}
 
-	while(Front2 < End2 - 1 && End2!=1)
+	if(Front2 < End2 - 1 && End2!=1)
 	{
-		HAL_UART_Transmit(&huart1, &RxBuffer2[Front2++], 1, HAL_MAX_DELAY);
-	}
-	if(Front2 >= End2 - 1 && End2 != 1)
-	{
+		if(RxBuffer2[0] == ':'){
+			IsSendingMessage2 = 1;
+			for (int i=0; i<End2-2;i++){
+				message2[i] = RxBuffer2[i+1];
+			}
+		}
+		HAL_UART_Transmit(&huart1, &RxBuffer2[0], End2-1, HAL_MAX_DELAY);
 		Front2 = 0;
 		End2 = 0;
 		(&huart2)->RxState = 32;
@@ -498,6 +606,7 @@ void HAL_GPIO_EXTI_Callback(uint16_t GPIO_Pin)
 	switch (GPIO_Pin) {
 	case KEY0_Pin:
 		if (HAL_GPIO_ReadPin(KEY0_GPIO_Port, KEY0_Pin) == GPIO_PIN_RESET) {
+			IsSetUp = 0;
 			HAL_UART_Transmit(&huart1, "SetSTA\r\n", 8, HAL_MAX_DELAY);
 
 			SendCommand(SetSTAMode, ResponseOK, DefaultTimeout);
@@ -511,10 +620,12 @@ void HAL_GPIO_EXTI_Callback(uint16_t GPIO_Pin)
 			//SendCommand(StartSerialNet, ResponseOK, DefaultTimeout);
 			Mode = 4;
 			HAL_UART_Transmit(&huart1, "Finish\r\n", 8, HAL_MAX_DELAY);
+			IsSetUp =1;
 		}
 		break;
 	case KEY1_Pin:
 		if (HAL_GPIO_ReadPin(KEY1_GPIO_Port, KEY1_Pin) == GPIO_PIN_RESET) {
+			IsSetUp = 0;
 			HAL_UART_Transmit(&huart1, "SetAP\r\n", 7, HAL_MAX_DELAY);
 
 			SendCommand(SetAPMode, ResponseOK, DefaultTimeout);
@@ -527,6 +638,7 @@ void HAL_GPIO_EXTI_Callback(uint16_t GPIO_Pin)
 			SendCommand(Default_StartServerAndSetPort, ResponseOK, DefaultTimeout);
 			Mode = 1;
 			HAL_UART_Transmit(&huart1, "Finish\r\n", 8, HAL_MAX_DELAY);
+			IsSetUp = 1;
 		}
 		break;
 	case KEY_WK_Pin:
@@ -539,6 +651,19 @@ void HAL_GPIO_EXTI_Callback(uint16_t GPIO_Pin)
 		break;
 	}
 }
+
+void NotationMsg1(){
+	LCD_DrawLine(222, msgY+6, 232, msgY+6);
+	LCD_DrawLine(222, msgY+5, 232, msgY+5);
+	LCD_DrawLine(222, msgY+7, 232, msgY+7);
+}
+
+void NotationMsg2(){
+	LCD_DrawLine(8-1, msgY+6, 18, msgY+6);
+	LCD_DrawLine(8, msgY+5, 18, msgY+5);
+	LCD_DrawLine(8, msgY+7, 18, msgY+7);
+}
+
 /* USER CODE END 4 */
 
 /**
