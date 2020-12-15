@@ -554,7 +554,7 @@ void HAL_TIM_PeriodElapsedCallback(TIM_HandleTypeDef *htim)
 
 
 			HAL_UART_Transmit(&huart1, &msg[5], End1-1-5, HAL_MAX_DELAY);	//message echo
-			HAL_UART_Transmit(&huart2, &msg[4], End1-1-4, HAL_MAX_DELAY);	//send message to wifi
+			HAL_UART_Transmit(&huart2, &msg[5], End1-1-5, HAL_MAX_DELAY);	//send message to wifi
 
 			//Send the message to LCD Buffer
 			for (int i=0; i<End1-6;i++){
@@ -575,10 +575,10 @@ void HAL_TIM_PeriodElapsedCallback(TIM_HandleTypeDef *htim)
 
 	if(Front2 < End2 - 1 && End2!=1)
 	{
-		if(RxBuffer2[0] == ':'){
+		if(RxBuffer[0] == '+' && RxBuffer[1] == 'I' && RxBuffer[2] == 'P'){
 			IsSendingMessage2 = 1;
-			for (int i=0; i<End2-2;i++){
-				message2[i] = RxBuffer2[i+1];
+			for (int i=0; i<End2-1;i++){
+				message2[i] = RxBuffer2[i];
 			}
 		}
 		HAL_UART_Transmit(&huart1, &RxBuffer2[0], End2-1, HAL_MAX_DELAY);
