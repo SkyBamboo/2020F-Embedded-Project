@@ -421,18 +421,9 @@ int SendCommand(char cmd[], char expectReponse[], int time_out)
 
 void HAL_TIM_PeriodElapsedCallback(TIM_HandleTypeDef *htim)
 {
-//		if (Front1 < End1-1 && End1!=1)
-//		{
-//			char SendDataCommand[] = "AT+CIPSEND=0,5\r\n";
-//			sprintf(SendDataCommand, "AT+CIPSEND=0,%d\r\n", End1-1);
-//			//SendCommand(SendDataCommand, ResponseOK, DefaultTimeout);
-//			HAL_UART_Transmit(&huart2, SendDataCommand, strlen(SendDataCommand), HAL_MAX_DELAY);
-//		}
-//		//char msg[2000];
 
 	if(Front1 < End1 - 1 && End1!=1)
 	{
-
 //		while(Front1 < End1-1 && End1!=1)
 //		{
 //			HAL_UART_Transmit(&huart1, &RxBuffer1[Front1++], 1, HAL_MAX_DELAY);
@@ -452,10 +443,9 @@ void HAL_TIM_PeriodElapsedCallback(TIM_HandleTypeDef *htim)
 				sprintf(SendDataCommand, "AT+CIPSEND=%d\r\n", End1-1-5);
 			HAL_UART_Transmit(&huart2, SendDataCommand, 22, HAL_MAX_DELAY); //send command to wifi
 
-
 			HAL_UART_Transmit(&huart1, &msg[5], End1-1-5, HAL_MAX_DELAY);	//message echo
 			HAL_UART_Transmit(&huart2, &msg[5], End1-1-5, HAL_MAX_DELAY);	//send message to wifi
-		}else{
+		} else {
 			msg[End1-1] = '\r';
 			msg[End1] = '\n';
 			HAL_UART_Transmit(&huart1,&msg,End1+1,HAL_MAX_DELAY);
