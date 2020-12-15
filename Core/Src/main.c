@@ -69,6 +69,7 @@ static void MX_USART1_UART_Init(void);
 
 /* Private user code ---------------------------------------------------------*/
 /* USER CODE BEGIN 0 */
+
 uint8_t RxBuffer1[5000];
 uint8_t RxBuffer2[5000];
 uint8_t message1[2000]; //message displayed in LCD
@@ -82,6 +83,7 @@ uint16_t End1=0, End2=0;
 int isConnected = 0;
 int Mode = 0; // AP Server = 1; AP Client = 2; STA Server = 3; STA Client = 4
 
+int isSetUp = 0;
 char Reset[] = "AT+RST\r\n";
 char SetSingleConnect[] = "AT+CIPMUX=0\r\n";
 char SetMultiConnect[] = "AT+CIPMUX=1\r\n";
@@ -133,6 +135,8 @@ int size =12;
 int main(void)
 {
   /* USER CODE BEGIN 1 */
+	HAL_GPIO_TogglePin(LED0_GPIO_Port, LED0_Pin);
+	HAL_GPIO_TogglePin(LED1_GPIO_Port, LED1_Pin);
   /* USER CODE END 1 */
 
   /* MCU Configuration--------------------------------------------------------*/
@@ -478,7 +482,7 @@ int SendCommand(char cmd[], char expectReponse[], int time_out)
 {
 	char* indexOK = 0;
 	int findExpectResponse = 0;
-	HAL_GPIO_TogglePin(LED0_GPIO_Port, LED0_Pin);
+//	HAL_GPIO_TogglePin(LED0_GPIO_Port, LED0_Pin);
 	HAL_UART_Transmit(&huart2, (uint8_t*)cmd, strlen(cmd), HAL_MAX_DELAY);
 	if (expectReponse && time_out)
 	{
@@ -552,7 +556,6 @@ void HAL_TIM_PeriodElapsedCallback(TIM_HandleTypeDef *htim)
 				sprintf(SendDataCommand, "AT+CIPSEND=%d\r\n", End1-1-5);
 			HAL_UART_Transmit(&huart2, SendDataCommand, 22, HAL_MAX_DELAY); //send command to wifi
 
-
 			HAL_UART_Transmit(&huart1, &msg[5], End1-1-5, HAL_MAX_DELAY);	//message echo
 			HAL_UART_Transmit(&huart2, &msg[4], End1-1-4, HAL_MAX_DELAY);	//send message to wifi
 
@@ -589,6 +592,12 @@ void HAL_TIM_PeriodElapsedCallback(TIM_HandleTypeDef *htim)
 	}
 }
 
+//void DrawCircle(int x, int y, int r){
+//	for (int i=r;i==0;i--){
+//		LCD_Draw_Circle(x, y, i);
+//	}
+//}
+
 void HAL_UART_RxCpltCallback(UART_HandleTypeDef *huart)
 {
 	if (huart == &huart1)
@@ -599,6 +608,7 @@ void HAL_UART_RxCpltCallback(UART_HandleTypeDef *huart)
 	{
 		HAL_UART_Receive_IT(&huart2, &RxBuffer2[End2++], 1);
 	}
+
 }
 
 void HAL_GPIO_EXTI_Callback(uint16_t GPIO_Pin)
