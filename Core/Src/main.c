@@ -435,33 +435,54 @@ int GetMsgLength(char msg[200]) {
         }
         count++;
     }
-    return count;
+    return count-1;
 }
 
 void DisplayString(char msg[200], int ismsg1) {
-    int length = GetMsgLength(msg);
-    int rows = 0;
-    char temp[oneRow];
-    rows = length / oneRow + 1;
-    for (int i = 0; i < rows; i++) {
-        if (i == rows - 1) {
-            int rest = length - i * oneRow;
-            int blank = oneRow - rest + 1;
-            for (int j = 0; j < oneRow; j++) {
-                temp[j] = ' ';
-            }
-            for (int j = 0; j < rest; j++) {
-                temp[j + blank] = msg[i * oneRow + j];
-            }
-        } else {
-            for (int j = 0; j < oneRow; j++) {
-                temp[j] = msg[i * oneRow + j];
-            }
-        }
-        LCD_ShowString(msgX, msgY, rowWidth, rowHeight, size, temp);
-        msgY = msgY + rowHeight;
-    }
-    //LCD_ShowString(msgX, msgY, rowWidth, rowHeight, size, msg);
+	int length = GetMsgLength(msg);
+	    int rows = 0;
+	    char temp[oneRow];
+	    rows = length / oneRow + 1;
+	    if(ismsg1){
+			for (int i = 0; i < rows; i++) {
+				if (i == rows - 1) {
+					int rest = length - i * oneRow;
+					int blank = oneRow - rest + 1;
+					for (int j = 0; j < oneRow; j++) {
+						temp[j] = ' ';
+					}
+					for (int j = 0; j < rest; j++) {
+						temp[j + blank] = msg[i * oneRow + j];
+					}
+				} else {
+					for (int j = 0; j < oneRow; j++) {
+						temp[j] = msg[i * oneRow + j];
+					}
+				}
+				LCD_ShowString(msgX, msgY, rowWidth, rowHeight, size, temp);
+				msgY = msgY + rowHeight;
+			}
+	    }else{
+	    	for (int i = 0; i < rows; i++) {
+				if (i == rows - 1) {
+					int word = length - i * oneRow;
+					int blank = oneRow - word + 1;
+					for (int j = 0; j < word; j++) {
+						temp[j] = msg[i * oneRow + j];
+					}
+					for (int j = 0; j < blank; j++) {
+						temp[j+word] = ' ';
+					}
+				} else {
+					for (int j = 0; j < oneRow; j++) {
+						temp[j] = msg[i * oneRow + j];
+					}
+				}
+				LCD_ShowString(msgX, msgY, rowWidth, rowHeight, size, temp);
+				msgY = msgY + rowHeight;
+			}
+	    }
+	    //LCD_ShowString(msgX, msgY, rowWidth, rowHeight, size, msg);
 }
 
 int SendCommand(char cmd[], char expectReponse[], int time_out) {
@@ -553,11 +574,22 @@ void HAL_TIM_PeriodElapsedCallback(TIM_HandleTypeDef *htim)
 
 	if(Front2 < End2 - 1 && End2!=1)
 	{
-		if(RxBuffer2[0] == '+' && RxBuffer2[1] == 'I' && RxBuffer2[2] == 'P')
+		if(RxBuffer2[2] == '+' && RxBuffer2[3] == 'I' && RxBuffer2[4] == 'P')
 		{
-			IsSendingMessage2 = 1;
-			for (int i=0; i<End2-1;i++){
-				message2[i] = RxBuffer2[i];
+			int index = 0;
+			for(int i= 5;i<End2-1;i++)
+			{
+				if(RxBuffer2[i] == ':')
+				{
+					index = i;
+					break;
+				}
+			}
+			//HAL_UART_Transmit(&huart1,&msg,strlen(msg),HAL_MAX_DELAY);
+			if(index>0){
+				IsSendingMessage2 = 1;
+				for (int i=index+1; i<End2-1;i++)
+					message2[i-index-1] = RxBuffer2[i];
 			}
 		}
 		HAL_UART_Transmit(&huart1, &RxBuffer2[0], End2-1, HAL_MAX_DELAY);
