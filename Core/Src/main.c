@@ -84,11 +84,13 @@ int IsSendingMessage2 = 0;
 uint16_t Front1 = 0, Front2 = 0;
 uint16_t LastEnd1 = 0, LastEnd2 = 0;
 uint16_t End1 = 0, End2 = 0;
+int lightMode = 0;
+int lightcount = 0;
 
-int HasSendCommand = 0;
+int HasSendConnectedMessage = 0;
 int FrequencyCounter = 1;
 int ConnectionCheckCounter = 3;
-char ConnectionChecker[] = "^";
+char ConnectionChecker[] = "^^^^^^^^^^";
 int isSendChecker = 0;
 int isConnected = 0;
 int Mode = 0; // AP Server = 1; AP Client = 2; STA Server = 3; STA Client = 4
@@ -206,7 +208,7 @@ int main(void) {
 
         //Check Connection Status
         if (IsSetUp) {
-            if (ConnectionFail(CheckConnectionStatus, "4", "5", DefaultTimeout)) {
+            if (!isConnected) {
                 POINT_COLOR = RED;
                 LCD_Draw_Circle(120, 10, 6);
                 LCD_Draw_Circle(120, 10, 5);
@@ -495,7 +497,6 @@ void DisplayString(char* msg, int ismsg1) {
 int SendCommand(char cmd[], char expectReponse[], int time_out) {
     char *indexOK = 0;
     int findExpectResponse = 0;
-    HAL_GPIO_TogglePin(LED0_GPIO_Port, LED0_Pin);
     HAL_UART_Transmit(&huart2, (uint8_t *) cmd, strlen(cmd), HAL_MAX_DELAY);
     if (expectReponse && time_out) {
         while (--time_out) {
@@ -541,8 +542,21 @@ int ConnectionFail(char cmd[], char expectResponse1[], char expectResponse2[], i
 
 void HAL_TIM_PeriodElapsedCallback(TIM_HandleTypeDef *htim)
 {
-	HAL_GPIO_TogglePin(LED0_GPIO_Port, LED0_Pin);
-	HAL_GPIO_TogglePin(LED1_GPIO_Port, LED1_Pin);
+	if(lightMode == 1){
+		HAL_GPIO_TogglePin(LED0_GPIO_Port, LED0_Pin);
+		HAL_GPIO_TogglePin(LED1_GPIO_Port, LED1_Pin);
+		lightcount += 1;
+		if(lightcount == 2)
+			lightcount = 0;
+	}
+	else if(lightMode == 0){
+		if(lightcount%2 == 1){
+			HAL_GPIO_TogglePin(LED0_GPIO_Port, LED0_Pin);
+			HAL_GPIO_TogglePin(LED1_GPIO_Port, LED1_Pin);
+			lightcount += 1;
+		}
+	}
+
 	if(Front1 < End1 - 1 && End1!=1)
 	{
 		char msg[2000];
@@ -579,48 +593,55 @@ void HAL_TIM_PeriodElapsedCallback(TIM_HandleTypeDef *htim)
 		HAL_UART_Receive_IT(&huart1, &RxBuffer1[End1++], 1);
 	} else {
         message1_len = 0;
-		if (IsSetUp)
-		{
-			if (FrequencyCounter == 0 || HasSendCommand)
-			{
-				FrequencyCounter = 1;
-				char SendDataCommand[22];
-				if (Mode == 1)
-				{
-					sprintf(SendDataCommand, "AT+CIPSEND=0,1\r\n");
-				}
-				else if (Mode == 4)
-				{
-					sprintf(SendDataCommand, "AT+CIPSEND=1\r\n");
-				}
-				if (!isSendChecker)
-				{
-					if (HasSendCommand)
-					{
-						HAL_UART_Transmit(&huart2, &ConnectionChecker, 1, HAL_MAX_DELAY);
-						isSendChecker = 1;
-						HasSendCommand = 0;
-					} else {
-						HAL_UART_Transmit(&huart2, SendDataCommand, 22, HAL_MAX_DELAY);
-						HasSendCommand = 1;
-					}
-				}
-				else
-				{
-					if (ConnectionCheckCounter > 0)
-						ConnectionCheckCounter--;
-				}
-				if (ConnectionCheckCounter == 0)
-				{
-					//to do : change light
-					HAL_UART_Transmit(&huart1, "Connection lost\r\n", 17, HAL_MAX_DELAY);
-				}
-			}
-			else
-			{
-				FrequencyCounter--;
-			}
-		}
+        if (IsSetUp)
+        {
+    		if (FrequencyCounter == 0)
+    		{
+    			FrequencyCounter = 1;
+    			char SendDataCommand[22];
+    			if (Mode == 1)
+    			{
+    				sprintf(SendDataCommand, "AT+CIPSEND=0,10\r\n");
+    			}
+    			else if (Mode == 4)
+    			{
+    				sprintf(SendDataCommand, "AT+CIPSEND=10\r\n");
+    			}
+    			if (!isSendChecker)
+    			{
+    				HAL_UART_Transmit(&huart2, SendDataCommand, 22, HAL_MAX_DELAY);
+    				HAL_UART_Transmit(&huart1, ConnectionChecker, 10, HAL_MAX_DELAY);
+    				HAL_UART_Transmit(&huart2, ConnectionChecker, 10, HAL_MAX_DELAY);
+    				isSendChecker = 1;
+    			}
+    			else
+    			{
+    				if (ConnectionCheckCounter > -1)
+    					ConnectionCheckCounter--;
+    			}
+    			if (ConnectionCheckCounter == 0)
+    			{
+    				lightMode = 0;
+    				isConnected = 0;
+    				HasSendConnectedMessage = 0;
+    				HAL_UART_Transmit(&huart1, "Connection lost\r\n", 17, HAL_MAX_DELAY);
+    			}
+    			else if (ConnectionCheckCounter > 0)
+    			{
+    				if (!HasSendConnectedMessage)
+    				{
+    					lightMode = 1;
+    					isConnected = 1;
+    					HAL_UART_Transmit(&huart1, "Connected\r\n", 17, HAL_MAX_DELAY);
+    					HasSendConnectedMessage = 1;
+    				}
+    			}
+    		}
+    		else
+    		{
+    			FrequencyCounter--;
+    		}
+        }
 	}
 
 	if(Front2 < End2 - 1 && End2!=1)
@@ -639,26 +660,32 @@ void HAL_TIM_PeriodElapsedCallback(TIM_HandleTypeDef *htim)
 			}
 			//HAL_UART_Transmit(&huart1,&msg,strlen(msg),HAL_MAX_DELAY);
 			if(index > 0){
-				IsSendingMessage2 = 1;
-				for (int i=index+1; i<End2-1;i++)
-					message2[i-index-1] = RxBuffer2[i];
+				if (RxBuffer2[index+1] == '^')
+				{
+					IsSendingMessage2 = 0;
+					message2_len = 0;
+					HAL_UART_Transmit(&huart1, "Receive check, ", 15, HAL_MAX_DELAY);
+				}
+				else
+				{
+					IsSendingMessage2 = 1;
+					for (int i=index+1; i<End2-1;i++)
+						message2[i-index-1] = RxBuffer2[i];
+					message2_len = End2 - index - 2;
+					HAL_UART_Transmit(&huart1, "Receive data, ", 14, HAL_MAX_DELAY);
+				}
 				ConnectionCheckCounter = 3;
 				FrequencyCounter = 1;
 				isSendChecker = 0;
 				HAL_UART_Transmit(&huart1, "Counter reset\r\n", 15, HAL_MAX_DELAY);
-				message2_len = End2 - index - 2;
 			}
 		}
-		uint8_t a[3];
-		sprintf(a,"%d",message2_len);
-
-		HAL_UART_Transmit(&huart1, &a, strlen(a), HAL_MAX_DELAY);
 		HAL_UART_Transmit(&huart1, &RxBuffer2[0], End2-1, HAL_MAX_DELAY);
 		Front2 = 0;
 		End2 = 0;
 		(&huart2)->RxState = 32;
 		HAL_UART_Receive_IT(&huart2, &RxBuffer2[End2++], 1);
-	}else{
+	} else {
 		message2_len = 0;
 	}
 }
@@ -691,6 +718,7 @@ void HAL_GPIO_EXTI_Callback(uint16_t GPIO_Pin) {
                 Mode = 4;
                 HAL_UART_Transmit(&huart1, "Finish\r\n", 8, HAL_MAX_DELAY);
                 IsSetUp = 1;
+                lightMode = 1;
             }
             break;
         case KEY1_Pin:
@@ -709,6 +737,7 @@ void HAL_GPIO_EXTI_Callback(uint16_t GPIO_Pin) {
                 Mode = 1;
                 HAL_UART_Transmit(&huart1, "Finish\r\n", 8, HAL_MAX_DELAY);
                 IsSetUp = 1;
+                lightMode = 1;
             }
             break;
         case KEY_WK_Pin:
