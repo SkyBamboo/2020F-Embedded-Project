@@ -83,6 +83,11 @@ uint16_t Front1 = 0, Front2 = 0;
 uint16_t LastEnd1 = 0, LastEnd2 = 0;
 uint16_t End1 = 0, End2 = 0;
 
+int HasSendCommand = 0;
+int FrequencyCounter = 1;
+int ConnectionCheckCounter = 3;
+char ConnectionChecker[] = "^";
+int isSendChecker = 0;
 int isConnected = 0;
 int Mode = 0; // AP Server = 1; AP Client = 2; STA Server = 3; STA Client = 4
 
@@ -538,7 +543,7 @@ void HAL_TIM_PeriodElapsedCallback(TIM_HandleTypeDef *htim)
 	HAL_GPIO_TogglePin(LED1_GPIO_Port, LED1_Pin);
 	if(Front1 < End1 - 1 && End1!=1)
 	{
-		char msg[200];
+		char msg[2000];
 		for(int i=0;i<End1-1;i++){
 			msg[i] = RxBuffer1[i];
 		}
@@ -550,7 +555,6 @@ void HAL_TIM_PeriodElapsedCallback(TIM_HandleTypeDef *htim)
 			else if(Mode == 4)
 				sprintf(SendDataCommand, "AT+CIPSEND=%d\r\n", End1-1-5);
 			HAL_UART_Transmit(&huart2, SendDataCommand, 22, HAL_MAX_DELAY); //send command to wifi
-
 
 			HAL_UART_Transmit(&huart1, &msg[5], End1-1-5, HAL_MAX_DELAY);	//message echo
 			HAL_UART_Transmit(&huart2, &msg[5], End1-1-5, HAL_MAX_DELAY);	//send message to wifi
@@ -570,14 +574,58 @@ void HAL_TIM_PeriodElapsedCallback(TIM_HandleTypeDef *htim)
 		End1 = 0;
 		(&huart1)->RxState = 32;
 		HAL_UART_Receive_IT(&huart1, &RxBuffer1[End1++], 1);
+	} else {
+		if (IsSetUp)
+		{
+			if (FrequencyCounter == 0 || HasSendCommand)
+			{
+				FrequencyCounter = 1;
+				char SendDataCommand[22];
+				if (Mode == 1)
+				{
+					sprintf(SendDataCommand, "AT+CIPSEND=0,1\r\n");
+				}
+				else if (Mode == 4)
+				{
+					sprintf(SendDataCommand, "AT+CIPSEND=1\r\n");
+				}
+				if (!isSendChecker)
+				{
+					if (HasSendCommand)
+					{
+						HAL_UART_Transmit(&huart2, &ConnectionChecker, 1, HAL_MAX_DELAY);
+						isSendChecker = 1;
+						HasSendCommand = 0;
+					} else {
+						HAL_UART_Transmit(&huart2, SendDataCommand, 22, HAL_MAX_DELAY);
+						HasSendCommand = 1;
+					}
+				}
+				else
+				{
+					if (ConnectionCheckCounter > 0)
+						ConnectionCheckCounter--;
+				}
+				if (ConnectionCheckCounter == 0)
+				{
+					//to do : change light
+					HAL_UART_Transmit(&huart1, "Connection lost\r\n", 17, HAL_MAX_DELAY);
+				}
+			}
+			else
+			{
+				FrequencyCounter--;
+			}
+		}
 	}
 
 	if(Front2 < End2 - 1 && End2!=1)
 	{
+
 		if(RxBuffer2[2] == '+' && RxBuffer2[3] == 'I' && RxBuffer2[4] == 'P')
 		{
 			int index = 0;
-			for(int i= 5;i<End2-1;i++)
+			for(int i = 5;i<End2-1;i++)
 			{
 				if(RxBuffer2[i] == ':')
 				{
@@ -586,10 +634,15 @@ void HAL_TIM_PeriodElapsedCallback(TIM_HandleTypeDef *htim)
 				}
 			}
 			//HAL_UART_Transmit(&huart1,&msg,strlen(msg),HAL_MAX_DELAY);
-			if(index>0){
+			if(index > 0){
 				IsSendingMessage2 = 1;
 				for (int i=index+1; i<End2-1;i++)
 					message2[i-index-1] = RxBuffer2[i];
+
+				ConnectionCheckCounter = 3;
+				FrequencyCounter = 1;
+				isSendChecker = 0;
+				HAL_UART_Transmit(&huart1, "Counter reset\r\n", 15, HAL_MAX_DELAY);
 			}
 		}
 		HAL_UART_Transmit(&huart1, &RxBuffer2[0], End2-1, HAL_MAX_DELAY);
