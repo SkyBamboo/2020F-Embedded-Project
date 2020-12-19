@@ -75,9 +75,11 @@ static void MX_USART1_UART_Init(void);
 /* USER CODE BEGIN 0 */
 uint8_t RxBuffer1[5000];
 uint8_t RxBuffer2[5000];
-uint8_t message1[2000]; //message displayed in LCD
+uint8_t message1[2000]; //message displayed in LCD (most 1999 characters)
+int message1_len = 0;
 int IsSendingMessage1 = 0;
-uint8_t message2[2000]; //message displayed in LCD
+uint8_t message2[2000]; //message displayed in LCD (most 1999 characters)
+int message2_len = 0;
 int IsSendingMessage2 = 0;
 uint16_t Front1 = 0, Front2 = 0;
 uint16_t LastEnd1 = 0, LastEnd2 = 0;
@@ -172,7 +174,6 @@ int main(void) {
         if (IsSendingMessage2) {
             POINT_COLOR = BLUE;
             NotationMsg2();
-            //LCD_ShowString(msg1X, msgY, msgL, 15, 12, (uint8_t*)msg1);
             DisplayString(message2, 0);
             IsSendingMessage2 = 0;
             memset(message2, 0, sizeof message2);
@@ -180,7 +181,6 @@ int main(void) {
         if (IsSendingMessage1) {
             POINT_COLOR = BLACK;
             NotationMsg1();
-            //LCD_ShowString(msg2X, msgY, msgL, 15, 12, (uint8_t*)msg2);
             DisplayString(message1, 1);
             IsSendingMessage1 = 0;
             memset(message1, 0, sizeof message1);
@@ -427,10 +427,10 @@ static void MX_GPIO_Init(void) {
 }
 
 /* USER CODE BEGIN 4 */
-int GetMsgLength(char msg[200]) {
+int GetMsgLength(char* msg) {
     int count = 0;
-    for (int i = 0; i < 100; i++) {
-        if (msg[i] == msg[200]) {
+    for (int i = 0; i < 1999; i++) {
+        if (msg[i] == msg[1999]) {
             break;
         }
         count++;
@@ -438,51 +438,53 @@ int GetMsgLength(char msg[200]) {
     return count-1;
 }
 
-void DisplayString(char msg[200], int ismsg1) {
-	int length = GetMsgLength(msg);
-	    int rows = 0;
-	    char temp[oneRow];
-	    rows = length / oneRow + 1;
-	    if(ismsg1){
-			for (int i = 0; i < rows; i++) {
-				if (i == rows - 1) {
-					int rest = length - i * oneRow;
-					int blank = oneRow - rest + 1;
-					for (int j = 0; j < oneRow; j++) {
-						temp[j] = ' ';
-					}
-					for (int j = 0; j < rest; j++) {
-						temp[j + blank] = msg[i * oneRow + j];
-					}
-				} else {
-					for (int j = 0; j < oneRow; j++) {
-						temp[j] = msg[i * oneRow + j];
-					}
+void DisplayString(char* msg, int ismsg1) {
+	int length = 0;
+	int rows = 0;
+	char temp[oneRow];
+	if(ismsg1){
+		length = message1_len;
+		int rows = length / oneRow + 1;
+		for (int i = 0; i < rows; i++) {
+			if (i == rows - 1) {
+				int rest = length - i * oneRow;
+				int blank = oneRow - rest + 1;
+				for (int j = 0; j < oneRow; j++) {
+					temp[j] = ' ';
 				}
-				LCD_ShowString(msgX, msgY, rowWidth, rowHeight, size, temp);
-				msgY = msgY + rowHeight;
-			}
-	    }else{
-	    	for (int i = 0; i < rows; i++) {
-				if (i == rows - 1) {
-					int word = length - i * oneRow;
-					int blank = oneRow - word + 1;
-					for (int j = 0; j < word; j++) {
-						temp[j] = msg[i * oneRow + j];
-					}
-					for (int j = 0; j < blank; j++) {
-						temp[j+word] = ' ';
-					}
-				} else {
-					for (int j = 0; j < oneRow; j++) {
-						temp[j] = msg[i * oneRow + j];
-					}
+				for (int j = 0; j < rest; j++) {
+					temp[j + blank] = msg[i * oneRow + j];
 				}
-				LCD_ShowString(msgX, msgY, rowWidth, rowHeight, size, temp);
-				msgY = msgY + rowHeight;
+			} else {
+				for (int j = 0; j < oneRow; j++) {
+					temp[j] = msg[i * oneRow + j];
+				}
 			}
-	    }
-	    //LCD_ShowString(msgX, msgY, rowWidth, rowHeight, size, msg);
+			LCD_ShowString(msgX, msgY, rowWidth, rowHeight, size, temp);
+			msgY = msgY + rowHeight;
+		}
+	}else{
+		length = message2_len;
+		int rows = length / oneRow + 1;
+		for (int i = 0; i < rows; i++) {
+			if (i == rows - 1) {
+				int word = length - i * oneRow;
+				int blank = oneRow - word + 1;
+				for (int j = 0; j < word; j++) {
+					temp[j] = msg[i * oneRow + j];
+				}
+				for (int j = 0; j < blank; j++) {
+					temp[j+word] = ' ';
+				}
+			} else {
+				for (int j = 0; j < oneRow; j++) {
+					temp[j] = msg[i * oneRow + j];
+				}
+			}
+			LCD_ShowString(msgX, msgY, rowWidth, rowHeight, size, temp);
+			msgY = msgY + rowHeight;
+		}
+	}
 }
 
 int SendCommand(char cmd[], char expectReponse[], int time_out) {
@@ -538,7 +540,7 @@ void HAL_TIM_PeriodElapsedCallback(TIM_HandleTypeDef *htim)
 	HAL_GPIO_TogglePin(LED1_GPIO_Port, LED1_Pin);
 	if(Front1 < End1 - 1 && End1!=1)
 	{
-		char msg[200];
+		char msg[2000];
 		for(int i=0;i<End1-1;i++){
 			msg[i] = RxBuffer1[i];
 		}
@@ -559,6 +561,7 @@ void HAL_TIM_PeriodElapsedCallback(TIM_HandleTypeDef *htim)
 			for (int i=0; i<End1-6;i++){
 				message1[i] = msg[i+5];
 			}
+			message1_len = End1 - 6;
 		}else{
 			msg[End1-1] = '\r';
 			msg[End1] = '\n';
@@ -570,6 +573,8 @@ void HAL_TIM_PeriodElapsedCallback(TIM_HandleTypeDef *htim)
 		End1 = 0;
 		(&huart1)->RxState = 32;
 		HAL_UART_Receive_IT(&huart1, &RxBuffer1[End1++], 1);
+	}else{
+		message1_len = 0;
 	}
 
 	if(Front2 < End2 - 1 && End2!=1)
@@ -590,13 +595,20 @@ void HAL_TIM_PeriodElapsedCallback(TIM_HandleTypeDef *htim)
 				IsSendingMessage2 = 1;
 				for (int i=index+1; i<End2-1;i++)
 					message2[i-index-1] = RxBuffer2[i];
+				message2_len = End2 - index - 2;
 			}
 		}
+		uint8_t a[3];
+		sprintf(a,"%d",message2_len);
+
+		HAL_UART_Transmit(&huart1, &a, strlen(a), HAL_MAX_DELAY);
 		HAL_UART_Transmit(&huart1, &RxBuffer2[0], End2-1, HAL_MAX_DELAY);
 		Front2 = 0;
 		End2 = 0;
 		(&huart2)->RxState = 32;
 		HAL_UART_Receive_IT(&huart2, &RxBuffer2[End2++], 1);
+	}else{
+		message2_len = 0;
 	}
 }
 
