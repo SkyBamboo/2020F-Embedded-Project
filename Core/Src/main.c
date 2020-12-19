@@ -557,6 +557,51 @@ void HAL_TIM_PeriodElapsedCallback(TIM_HandleTypeDef *htim)
 		}
 	}
 
+	if(Front2 < End2 - 1 && End2!=1)
+	{
+
+		if(RxBuffer2[2] == '+' && RxBuffer2[3] == 'I' && RxBuffer2[4] == 'P')
+		{
+			int index = 0;
+			for(int i = 5;i<End2-1;i++)
+			{
+				if(RxBuffer2[i] == ':')
+				{
+					index = i;
+					break;
+				}
+			}
+			//HAL_UART_Transmit(&huart1,&msg,strlen(msg),HAL_MAX_DELAY);
+			if(index > 0){
+				if (RxBuffer2[index+1] == '^')
+				{
+					IsSendingMessage2 = 0;
+					message2_len = 0;
+					HAL_UART_Transmit(&huart1, "Receive check, ", 15, HAL_MAX_DELAY);
+				}
+				else
+				{
+					IsSendingMessage2 = 1;
+					for (int i=index+1; i<End2-1;i++)
+						message2[i-index-1] = RxBuffer2[i];
+					message2_len = End2 - index - 2;
+					HAL_UART_Transmit(&huart1, "Receive data, ", 14, HAL_MAX_DELAY);
+				}
+				ConnectionCheckCounter = 3;
+				FrequencyCounter = 1;
+				isSendChecker = 0;
+				HAL_UART_Transmit(&huart1, "Counter reset\r\n", 15, HAL_MAX_DELAY);
+			}
+		}
+		HAL_UART_Transmit(&huart1, &RxBuffer2[0], End2-1, HAL_MAX_DELAY);
+		Front2 = 0;
+		End2 = 0;
+		(&huart2)->RxState = 32;
+		HAL_UART_Receive_IT(&huart2, &RxBuffer2[End2++], 1);
+	} else {
+		message2_len = 0;
+	}
+
 	if(Front1 < End1 - 1 && End1!=1)
 	{
 		char msg[2000];
@@ -642,51 +687,6 @@ void HAL_TIM_PeriodElapsedCallback(TIM_HandleTypeDef *htim)
     			FrequencyCounter--;
     		}
         }
-	}
-
-	if(Front2 < End2 - 1 && End2!=1)
-	{
-
-		if(RxBuffer2[2] == '+' && RxBuffer2[3] == 'I' && RxBuffer2[4] == 'P')
-		{
-			int index = 0;
-			for(int i = 5;i<End2-1;i++)
-			{
-				if(RxBuffer2[i] == ':')
-				{
-					index = i;
-					break;
-				}
-			}
-			//HAL_UART_Transmit(&huart1,&msg,strlen(msg),HAL_MAX_DELAY);
-			if(index > 0){
-				if (RxBuffer2[index+1] == '^')
-				{
-					IsSendingMessage2 = 0;
-					message2_len = 0;
-					HAL_UART_Transmit(&huart1, "Receive check, ", 15, HAL_MAX_DELAY);
-				}
-				else
-				{
-					IsSendingMessage2 = 1;
-					for (int i=index+1; i<End2-1;i++)
-						message2[i-index-1] = RxBuffer2[i];
-					message2_len = End2 - index - 2;
-					HAL_UART_Transmit(&huart1, "Receive data, ", 14, HAL_MAX_DELAY);
-				}
-				ConnectionCheckCounter = 3;
-				FrequencyCounter = 1;
-				isSendChecker = 0;
-				HAL_UART_Transmit(&huart1, "Counter reset\r\n", 15, HAL_MAX_DELAY);
-			}
-		}
-		HAL_UART_Transmit(&huart1, &RxBuffer2[0], End2-1, HAL_MAX_DELAY);
-		Front2 = 0;
-		End2 = 0;
-		(&huart2)->RxState = 32;
-		HAL_UART_Receive_IT(&huart2, &RxBuffer2[End2++], 1);
-	} else {
-		message2_len = 0;
 	}
 }
 
