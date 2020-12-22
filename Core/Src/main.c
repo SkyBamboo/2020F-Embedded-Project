@@ -88,9 +88,9 @@ int lightMode = 0;
 int lightcount = 0;
 
 int HasSendConnectedMessage = 0;
-int FrequencyCounter = 1;
+int FrequencyCounter = 10;
 int ConnectionCheckCounter = 3;
-char ConnectionChecker[] = "^^^^^^^^^^";
+char ConnectionChecker[] = "^^^^^^^^^^\r\n";
 int isSendChecker = 0;
 int isConnected = 0;
 int Mode = 0; // AP Server = 1; AP Client = 2; STA Server = 3; STA Client = 4
@@ -179,6 +179,12 @@ int main(void) {
     /* USER CODE BEGIN WHILE */
     while (1) {
         if (IsSendingMessage2) {
+    		int length = message2_len;
+    		int rows = length / oneRow + 1;
+            if (msgY + rows * rowHeight > 320) {
+            	LCD_Clear(WHITE);
+            	msgY = 30;
+            }
             POINT_COLOR = BLUE;
             NotationMsg2();
             DisplayString(message2, 0);
@@ -186,6 +192,12 @@ int main(void) {
             memset(message2, 0, sizeof message2);
         }
         if (IsSendingMessage1) {
+    		int length = message1_len;
+    		int rows = length / oneRow + 1;
+            if (msgY + rows * rowHeight > 320) {
+            	LCD_Clear(WHITE);
+            	msgY = 30;
+            }
             POINT_COLOR = BLACK;
             NotationMsg1();
             DisplayString(message1, 1);
@@ -434,6 +446,7 @@ static void MX_GPIO_Init(void) {
 }
 
 /* USER CODE BEGIN 4 */
+
 int GetMsgLength(char* msg) {
     int count = 0;
     for (int i = 0; i < 1999; i++) {
@@ -455,7 +468,7 @@ void DisplayString(char* msg, int ismsg1) {
 		for (int i = 0; i < rows; i++) {
 			if (i == rows - 1) {
 				int rest = length - i * oneRow;
-				int blank = oneRow - rest + 1;
+				int blank = oneRow - rest;
 				for (int j = 0; j < oneRow; j++) {
 					temp[j] = ' ';
 				}
@@ -476,12 +489,12 @@ void DisplayString(char* msg, int ismsg1) {
 		for (int i = 0; i < rows; i++) {
 			if (i == rows - 1) {
 				int word = length - i * oneRow;
-				int blank = oneRow - word + 1;
+				int blank = oneRow - word;
 				for (int j = 0; j < word; j++) {
 					temp[j] = msg[i * oneRow + j];
 				}
 				for (int j = 0; j < blank; j++) {
-					temp[j+word] = ' ';
+					temp[j + word] = ' ';
 				}
 			} else {
 				for (int j = 0; j < oneRow; j++) {
@@ -512,7 +525,6 @@ int SendCommand(char cmd[], char expectReponse[], int time_out) {
     // Check response
     if (findExpectResponse) {
         HAL_UART_Transmit(&huart1, "Success\r\n", 9, HAL_MAX_DELAY);
-
     } else if (time_out == 0) {
         HAL_UART_Transmit(&huart1, "Timeout\r\n", 9, HAL_MAX_DELAY);
     } else {
@@ -584,12 +596,15 @@ void HAL_TIM_PeriodElapsedCallback(TIM_HandleTypeDef *htim)
 					IsSendingMessage2 = 1;
 					for (int i=index+1; i<End2-1;i++)
 						message2[i-index-1] = RxBuffer2[i];
-					message2_len = End2 - index - 2;
+					message2_len = End2 - (index-1) - 1;
 					HAL_UART_Transmit(&huart1, "Receive data, ", 14, HAL_MAX_DELAY);
 				}
 				ConnectionCheckCounter = 3;
-				FrequencyCounter = 1;
+				//FrequencyCounter = 10;
 				isSendChecker = 0;
+				lightMode = 1;
+				isConnected = 1;
+				HasSendConnectedMessage = 0;
 				HAL_UART_Transmit(&huart1, "Counter reset\r\n", 15, HAL_MAX_DELAY);
 			}
 		}
@@ -642,7 +657,7 @@ void HAL_TIM_PeriodElapsedCallback(TIM_HandleTypeDef *htim)
         {
     		if (FrequencyCounter == 0)
     		{
-    			FrequencyCounter = 1;
+    			FrequencyCounter = 10;
     			char SendDataCommand[22];
     			if (Mode == 1)
     			{
@@ -655,8 +670,8 @@ void HAL_TIM_PeriodElapsedCallback(TIM_HandleTypeDef *htim)
     			if (!isSendChecker)
     			{
     				HAL_UART_Transmit(&huart2, SendDataCommand, 22, HAL_MAX_DELAY);
-    				HAL_UART_Transmit(&huart1, ConnectionChecker, 10, HAL_MAX_DELAY);
-    				HAL_UART_Transmit(&huart2, ConnectionChecker, 10, HAL_MAX_DELAY);
+    				HAL_UART_Transmit(&huart1, ConnectionChecker, 12, HAL_MAX_DELAY);
+    				HAL_UART_Transmit(&huart2, ConnectionChecker, 12, HAL_MAX_DELAY);
     				isSendChecker = 1;
     			}
     			else
@@ -744,6 +759,8 @@ void HAL_GPIO_EXTI_Callback(uint16_t GPIO_Pin) {
             if (HAL_GPIO_ReadPin(KEY_WK_GPIO_Port, KEY_WK_Pin) == GPIO_PIN_SET) {
                 //SendCommand(CloseSerialNet, ResponseOK, DefaultTimeout);
                 SendCommand(CloseConnection, ResponseOK, DefaultTimeout);
+                lightMode = 0;
+                isConnected = 0;
             }
             break;
         default:

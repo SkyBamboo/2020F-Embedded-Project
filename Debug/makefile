@@ -15,12 +15,6 @@ RM := rm -rf
 -include objects.mk
 
 ifneq ($(MAKECMDGOALS),clean)
-ifneq ($(strip $(S_DEPS)),)
--include $(S_DEPS)
-endif
-ifneq ($(strip $(S_UPPER_DEPS)),)
--include $(S_UPPER_DEPS)
-endif
 ifneq ($(strip $(C_DEPS)),)
 -include $(C_DEPS)
 endif
@@ -50,8 +44,8 @@ all:
 main-build: STM32_WiFi.elf secondary-outputs
 
 # Tool invocations
-STM32_WiFi.elf: $(OBJS) $(USER_OBJS) D:\STM32CubeIDE_1.4.0\STM32CubeIDE\ WorkSpace\2020F-Embedded-Project.zip_expanded\2020F-Embedded-Project\STM32F103RCTX_FLASH.ld
-	arm-none-eabi-gcc -o "STM32_WiFi.elf" @"objects.list" $(USER_OBJS) $(LIBS) -mcpu=cortex-m3 -T"D:\STM32CubeIDE_1.4.0\STM32CubeIDE WorkSpace\2020F-Embedded-Project.zip_expanded\2020F-Embedded-Project\STM32F103RCTX_FLASH.ld" --specs=nosys.specs -Wl,-Map="STM32_WiFi.map" -Wl,--gc-sections -static --specs=nano.specs -mfloat-abi=soft -mthumb -Wl,--start-group -lc -lm -Wl,--end-group
+STM32_WiFi.elf: $(OBJS) $(USER_OBJS) C:\Users\18038\Desktop\2020F-Embedded-Project\STM32F103RCTX_FLASH.ld
+	arm-none-eabi-gcc -o "STM32_WiFi.elf" @"objects.list" $(USER_OBJS) $(LIBS) -mcpu=cortex-m3 -T"C:\Users\18038\Desktop\2020F-Embedded-Project\STM32F103RCTX_FLASH.ld" --specs=nosys.specs -Wl,-Map="STM32_WiFi.map" -Wl,--gc-sections -static --specs=nano.specs -mfloat-abi=soft -mthumb -Wl,--start-group -lc -lm -Wl,--end-group
 	@echo 'Finished building target: $@'
 	@echo ' '
 
